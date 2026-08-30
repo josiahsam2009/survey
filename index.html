@@ -11,8 +11,8 @@
         
         /* Video Section */
         #video-section { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; }
-        video { max-width: 90%; max-height: 80vh; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.8); }
-        #ad-video { max-width: 90%; max-height: 80vh; width: 900px; height: 506px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.8); }
+        #youtube-player { width: 90%; max-width: 900px; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.8); }
+        #youtube-player iframe { width: 100%; height: 100%; border: 0; }
         .btn-skip { margin-top: 25px; padding: 12px 24px; font-size: 16px; font-weight: bold; cursor: pointer; background: #fff; color: #000; border: none; border-radius: 4px; }
         .btn-skip:hover { background: #eee; }
 
@@ -45,17 +45,7 @@
 
     <!-- 1. VIDEO SECTION -->
     <div id="video-section">
-
-        <!-- YouTube video -->
-        <iframe
-            id="ad-video"
-            src="https://www.youtube.com/embed/qx86mxArK3I"
-            title="Disclosed Ads"
-            frameborder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowfullscreen>
-        </iframe>
-
+        <div id="youtube-player"></div>
         <button class="btn-skip" id="proceed-btn">Proceed to Store</button>
     </div>
 
@@ -63,7 +53,6 @@
     <div id="store-section" class="hidden">
         <div class="header">
             <h1>The Marketplace</h1>
-
             <div class="checkout-area">
                 <div class="timer-label">Time taken</div>
                 <div id="checkout-timer" aria-live="polite">00:00:00</div>
@@ -92,17 +81,17 @@
         </div>
     </div>
 
+    <!-- YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+
     <!-- 3. LOGIC & DATA -->
     <script>
-
-        // --- SETUP: Google Form ---
+        // --- SETUP ---
         const googleFormLink = "https://docs.google.com/forms/d/e/1FAIpQLScm_gM4JZ4gSNgXj1krHiU-c8DVnVf5aYswW6t5x8sH5oLVnw/viewform";
-
-        // Google Form entry ID for the first question (Time Taken)
         const timeFormEntryId = "entry.976760102";
+        const youtubeVideoId = "qx86mxArK3I";
 
-
-        // --- PRODUCTS ---
+        // Add as many products as you want here. Just update the names and image file paths.
         const products = {
             fashion: [
                 { id: 'f1', name: 'Bracelet', img: 'media/Fashion/Bracelet.jpg' },
@@ -126,7 +115,6 @@
                 { id: 'f19', name: 'T-shirt', img: 'media/Fashion/t-shirt.jpg' },
                 { id: 'f20', name: 'Tote bag', img: 'media/Fashion/tote bag.jpg' }
             ],
-
             food: [
                 { id: 'fd1', name: 'Spicy Ramen Pack', img: 'media/Food/buldak.jpg' },
                 { id: 'fd2', name: 'Aloo Bhujia', img: 'media/Food/aloo.jpg' },
@@ -149,7 +137,6 @@
                 { id: 'fd19', name: 'Samosas', img: 'media/Food/samosa.jpg' },
                 { id: 'fd20', name: 'sprite', img: 'media/Food/sprite.jpg' }
             ],
-
             tech: [
                 { id: 't1', name: 'Vision Pro', img: 'media/Tech/vision pro.png' },
                 { id: 't2', name: 'Gaming Mouse', img: 'media/Tech/gm.jpg' },
@@ -172,7 +159,6 @@
                 { id: 't19', name: 'powerbank', img: 'media/Tech/61SRdzgwPTL.jpg' },
                 { id: 't20', name: 'headphones', img: 'media/Tech/617RrF009BL.jpg' }
             ],
-
             skincare: [
                 { id: 's1', name: 'Moisturizer', img: 'media/Hygiene and Beauty/moisturizer.png' },
                 { id: 's2', name: 'Moisturizer', img: 'media/Hygiene and Beauty/moisturizer2.png' },
@@ -201,7 +187,6 @@
         // --- DOM ELEMENTS ---
         const videoSection = document.getElementById('video-section');
         const storeSection = document.getElementById('store-section');
-        const video = document.getElementById('ad-video');
         const proceedBtn = document.getElementById('proceed-btn');
         const checkoutBtn = document.getElementById('checkout-btn');
         const checkoutTimer = document.getElementById('checkout-timer');
@@ -212,8 +197,27 @@
         let finalTimeSeconds = null;
         let checkoutSubmitted = false;
 
+        // --- YOUTUBE PLAYER ---
+        let youtubePlayer = null;
+
+        function onYouTubeIframeAPIReady() {
+            youtubePlayer = new YT.Player('youtube-player', {
+                videoId: youtubeVideoId,
+                playerVars: {
+                    start: 3,
+                    controls: 1,
+                    playsinline: 1,
+                    rel: 0
+                }
+            });
+        }
+
         // --- TRANSITION LOGIC ---
+        // The store can be opened with the Proceed button.
         proceedBtn.onclick = () => {
+            if (youtubePlayer && youtubePlayer.pauseVideo) {
+                youtubePlayer.pauseVideo();
+            }
             showStore();
         };
 
@@ -222,7 +226,7 @@
             storeSection.classList.remove('hidden');
             window.scrollTo(0,0);
 
-            // Start the timer when the store is opened.
+            // Start the timer only once, when the shopping store is opened.
             if (timerStart === null) {
                 timerStart = performance.now();
                 timerInterval = setInterval(updateTimerDisplay, 100);
@@ -230,13 +234,16 @@
             }
         }
 
+        // --- TIMER FORMATTING ---
         function formatTime(totalSeconds) {
             const total = Math.floor(totalSeconds);
             const hours = Math.floor(total / 3600);
             const minutes = Math.floor((total % 3600) / 60);
             const seconds = total % 60;
 
-            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            return String(hours).padStart(2, '0') + ':' +
+                   String(minutes).padStart(2, '0') + ':' +
+                   String(seconds).padStart(2, '0');
         }
 
         function updateTimerDisplay() {
@@ -251,21 +258,19 @@
 
             finalTimeSeconds = (performance.now() - timerStart) / 1000;
 
-            clearInterval(timerInterval);
-            timerInterval = null;
+            if (timerInterval !== null) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
 
-            sessionStorage.setItem(
-                'finalTimeSeconds',
-                finalTimeSeconds.toFixed(1)
-            );
+            const finalDisplay = formatTime(finalTimeSeconds);
 
-            sessionStorage.setItem(
-                'finalTimeDisplay',
-                formatTime(finalTimeSeconds)
-            );
+            // Save locally as an additional record.
+            sessionStorage.setItem('finalTimeSeconds', finalTimeSeconds.toFixed(1));
+            sessionStorage.setItem('finalTimeDisplay', finalDisplay);
 
-            checkoutTimer.textContent =
-                formatTime(finalTimeSeconds);
+            // Display the final fixed time.
+            checkoutTimer.textContent = finalDisplay;
 
             return finalTimeSeconds;
         }
@@ -296,61 +301,42 @@
 
         // --- CART LOGIC ---
         window.toggleCart = function(productName, btnElement) {
-
             if (cart.includes(productName)) {
-
                 cart = cart.filter(item => item !== productName);
-
                 btnElement.textContent = "Add to Cart";
                 btnElement.classList.remove('added');
-
             } else {
-
                 cart.push(productName);
-
                 btnElement.textContent = "Added ✓";
                 btnElement.classList.add('added');
             }
 
-            checkoutBtn.textContent =
-                `Checkout (${cart.length} items)`;
+            checkoutBtn.textContent = `Checkout (${cart.length} items)`;
         };
 
         // --- CHECKOUT LOGIC ---
         checkoutBtn.onclick = () => {
-
             if (checkoutSubmitted) return;
 
             checkoutSubmitted = true;
 
-            // Stop and save timer
+            // Stop and permanently display the timer value.
             const timeTaken = stopTimer();
+            const finalTime = formatTime(timeTaken);
 
-            // Prevent double-click
+            // Prevent double-clicks.
             checkoutBtn.disabled = true;
 
-            // Convert timer to HH:MM:SS
-            const formattedTime =
-                formatTime(timeTaken);
+            // Build the Google Forms pre-filled URL.
+            const params = new URLSearchParams();
+            params.set('usp', 'pp_url');
+            params.set(timeFormEntryId, finalTime);
 
-            // Create Google Form URL
-            const separator =
-                googleFormLink.includes('?')
-                    ? '&'
-                    : '?';
+            const formUrl = googleFormLink + '?' + params.toString();
 
-            const formUrl =
-                googleFormLink +
-                separator +
-                'usp=pp_url&' +
-                timeFormEntryId +
-                '=' +
-                encodeURIComponent(formattedTime);
-
-            // Send user to Google Form
+            // Go to Google Form with the timer automatically filled.
             window.location.href = formUrl;
         };
-
     </script>
 </body>
 </html>
